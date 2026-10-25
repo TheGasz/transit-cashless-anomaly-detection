@@ -1,0 +1,22 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest & testing cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local agent / IDE config
+.agent/
+.vscode/
+.idea/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Duplicate parquet in data root (original is in data/raw/)
+data/transactions_stream.parquet

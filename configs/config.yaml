@@ -1,0 +1,153 @@
+project:
+  name: "AinoSentinel: Real-Time Cashless Transit Transaction Anomaly Detection"
+  version: "3.0.0"
+  random_seed: 42
+
+simulation:
+  num_transactions: 120000
+  num_cards: 15000
+  num_stops: 45
+  num_readers: 120
+  num_days: 14
+  start_date: "2026-10-01T05:00:00"
+  anomaly_ratio: 0.015
+  corridors:
+    COR-01:
+      name: "Koridor 1 TransJakarta (Blok M - Kota)"
+      standard_fare_idr: 3500.0
+      max_penalty_fare_idr: 15000.0
+      base_lat: -6.2442
+      base_lon: 106.8006
+      end_lat: -6.1376
+      end_lon: 106.8133
+    COR-02:
+      name: "Koridor 2 KRL Commuter (Bogor - Manggarai - Jakarta Kota)"
+      standard_fare_idr: 6000.0
+      max_penalty_fare_idr: 20000.0
+      base_lat: -6.5950
+      base_lon: 106.7905
+      end_lat: -6.2100
+      end_lon: 106.8502
+    COR-03:
+      name: "Koridor 3 Trans Banyumas QRIS Tap (Ajibarang - Purwokerto)"
+      standard_fare_idr: 4000.0
+      max_penalty_fare_idr: 12000.0
+      base_lat: -7.4167
+      base_lon: 109.0667
+      end_lat: -7.4244
+      end_lon: 109.2396
+    COR-04:
+      name: "Koridor 4 Trans Jogja (Bandara Adisutjipto - Malioboro)"
+      standard_fare_idr: 3600.0
+      max_penalty_fare_idr: 10000.0
+      base_lat: -7.7882
+      base_lon: 110.4317
+      end_lat: -7.7926
+      end_lon: 110.3658
+    COR-05:
+      name: "Koridor 5 LRT & Parkir Elektronik Integrasi (Harjamukti - Dukuh Atas)"
+      standard_fare_idr: 10000.0
+      max_penalty_fare_idr: 25000.0
+      base_lat: -6.3735
+      base_lon: 106.8962
+      end_lat: -6.2008
+      end_lon: 106.8228
+
+splitting:
+  train_days: 10      # Hari 1-10 (~70%)
+  val_days: 2         # Hari 11-12 (~15%)
+  test_days: 2        # Hari 13-14 (~15%)
+  train_ratio: 0.70
+  val_ratio: 0.15
+  test_ratio: 0.15
+
+features:
+  feature_columns:
+    # Keluarga A: Kecepatan & Jarak Spasio-Temporal Kartu
+    - delta_t_card_sec
+    - delta_d_km
+    - velocity_kmh
+    - is_impossible_velocity_flag
+    # Keluarga B: Frekuensi & Pola Double-Tap (Velocity Counters)
+    - card_tap_count_15s
+    - card_tap_count_30s
+    - card_tap_count_1m
+    - card_tap_count_5m
+    - card_tap_count_1h
+    - card_tap_count_24h
+    - is_same_reader
+    - is_same_stop
+    - is_same_tap_type
+    - incomplete_tapout_ratio_7d
+    - consecutive_tapin_count
+    - passback_same_stop_count_5m
+    # Keluarga C: Telemetri Kesehatan Perangkat TOB / Gate
+    - reader_latency_ms
+    - reader_rolling_latency_mean_5m
+    - reader_rolling_latency_std_5m
+    - reader_latency_zscore
+    - reader_retry_ratio_5m
+    - sync_delay_seconds
+    - is_offline_sync_int
+    # Keluarga D: Deviasi Nilai Tarif & Siklus Waktu
+    - hour_sin
+    - hour_cos
+    - day_sin
+    - is_peak_hour
+    - fare_to_corridor_std_ratio
+
+guardrails:
+  double_tap_max_seconds: 8.0
+  impossible_velocity_kmh: 120.0
+  impossible_min_distance_km: 2.5
+
+models:
+  vae:
+    input_dim: 28
+    hidden_dim: 64
+    latent_dim: 12
+    dae_bottleneck_dim: 16
+    beta_kl: 0.05
+    dropout: 0.10
+    learning_rate: 0.0015
+    batch_size: 512
+    epochs: 18
+  isolation_forest:
+    n_estimators: 150
+    max_samples: 2048
+    contamination: 0.015
+    random_state: 42
+  lightgbm:
+    n_estimators: 250
+    learning_rate: 0.05
+    num_leaves: 31
+    max_depth: 6
+    min_child_samples: 25
+    subsample: 0.85
+    colsample_bytree: 0.85
+    random_state: 42
+
+business_cost:
+  cost_fraud_fn_idr: 45000.0
+  cost_false_alarm_fp_idr: 6500.0
+  double_tap_auto_refund_threshold: 0.85
+
+settlement_audit:
+  mad_zscore_threshold: 3.5
+  discrepancy_idr_threshold: 50000.0
+  missing_packet_ratio_threshold: 0.005
+
+paths:
+  raw_transactions: "data/raw/transactions_stream.parquet"
+  compat_transactions: "data/transactions_stream.parquet"
+  settlement_batches: "data/raw/daily_settlement_batches.csv"
+  stops_metadata: "data/raw/stops_metadata.csv"
+  scaler_model: "models/scaler.pkl"
+  vae_model: "models/vae_normal.pt"
+  dae_model: "models/dae_normal.pt"
+  hybrid_model: "models/hybrid_lgbm.pkl"
+  benchmark_metrics: "reports/benchmark_metrics.json"
+  optimal_threshold: "reports/optimal_threshold.json"
+  cost_curve_plot: "reports/cost_curve.png"
+  settlement_audit_csv: "reports/settlement_audit_table.csv"
+  settlement_audit_compat: "reports/settlement_audit.csv"
