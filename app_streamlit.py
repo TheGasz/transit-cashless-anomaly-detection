@@ -76,9 +76,9 @@ def render_dashboard() -> None:
         """
         <div style="background: linear-gradient(90deg, #0F172A 0%, #1E293B 60%, #0F766E 100%);
                     padding: 18px 24px; border-radius: 12px; color: white; margin-bottom: 16px;">
-            <h2 style="margin:0; color:white;">🛡️ AinoSentinel: Real-Time Cashless Transit Anomaly & Settlement Ops Center</h2>
+            <h2 style="margin:0; color:white;">🛡️ TransitSentinel: Real-Time Cashless Transit Anomaly & Settlement Ops Center</h2>
             <p style="margin:4px 0 0 0; opacity:0.9; font-size:0.95rem;">
-                PT Aino Indonesia Production Blueprint — Hybrid 3-Tier Engine (Deterministic Guardrails + PyTorch Residual VAE + LightGBM Stacking)
+                Mass Transit Cashless Payment Integrity Blueprint — Hybrid 3-Tier Engine (Deterministic Guardrails + PyTorch Residual VAE + LightGBM Stacking)
             </p>
         </div>
         """,

@@ -191,8 +191,8 @@ def test_dod4_streamlit_dashboard_readme_and_animations() -> None:
     readme_path = Path("README.md")
     assert readme_path.exists()
     readme_text = readme_path.read_text(encoding="utf-8")
-    assert "Role A" in readme_text and "Role B" in readme_text and "Role C" in readme_text
-    assert "PR-AUC" in readme_text and "AinoSentinel Hybrid Stacking" in readme_text
+    assert "Sprint 1" in readme_text and "Sprint 2" in readme_text and "Sprint 3" in readme_text and "Sprint 4" in readme_text
+    assert "PR-AUC" in readme_text and "Hybrid Stacking" in readme_text
 
     assert Path("reports/ainosentinel_pipeline_animation.gif").exists()
     assert Path("reports/ainosentinel_cost_sweep_animation.gif").exists()

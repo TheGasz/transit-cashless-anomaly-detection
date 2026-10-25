@@ -63,10 +63,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="AinoSentinel Real-Time Cashless Anomaly Detection & Settlement Audit API",
+    title="TransitSentinel Real-Time Cashless Anomaly Detection & Settlement Audit API",
     description=(
         "Platform deteksi anomali waktu nyata (Hybrid 3-Tier: Deterministic Guardrail + PyTorch Residual VAE "
-        "+ Isolation Forest & Calibrated LightGBM) dan audit rekonsiliasi settlement harian PT Aino Indonesia."
+        "+ Isolation Forest & Calibrated LightGBM) dan audit rekonsiliasi settlement harian transaksi transportasi publik."
     ),
     version="3.0.0",
     lifespan=lifespan,

@@ -1,13 +1,13 @@
-# 🛡️ AinoSentinel: Real-Time Cashless Transit Transaction Anomaly Detection, Settlement Audit & Monitoring Pipeline
+# 🛡️ TransitSentinel: Real-Time Cashless Transit Transaction Anomaly Detection, Settlement Audit & Monitoring Pipeline
 
-**Target Ekosistem Produksi**: Monitoring dan Deteksi Anomali Transaksi Cashless Payment — **PT Aino Indonesia** (BRT TransJakarta, KRL Commuter, QRIS Tap NFC Trans Banyumas, Trans Jogja, & LRT/Parkir Elektronik)  
+**Domain**: Monitoring dan Deteksi Anomali Transaksi Pembayaran Nirsentuh (*Cashless Payment*) pada Transportasi Publik (Bus BRT, Kereta Komuter, QRIS Tap NFC, dan Gerbang Parkir Elektronik)  
 **Arsitektur Utama**: Hybrid 3-Tier Anomaly Engine (*Deterministic Sub-Millisecond Guardrails* + *PyTorch Residual Variational Autoencoder* + *Isolation Forest & Calibrated LightGBM Stacking*) + *Daily Settlement Reconciliation Auditor (Robust MAD Z-Score)*.
 
 ---
 
 ## 1. Ringkasan Eksekutif & Empat Patologi Anomali Pembayaran Nirsentuh
 
-Pada operasional pembayaran transportasi publik (*Tap-on-Bus / TOB* dan *Turnstile Gate*), perangkat pembaca kartu uang elektronik (KMT, E-Money Bank) dan ponsel *QRIS Tap NFC* menghadapi kondisi lapangan ekstrem: guncangan armada, fluktuasi jaringan seluler, pemrosesan *store-and-forward offline*, serta percobaan kecurangan (*fraud*). **AinoSentinel** dirancang untuk mendeteksi dan melakukan auto-remediasi secara waktu nyata terhadap 5 patologi anomali:
+Pada operasional pembayaran transportasi publik (*Tap-on-Bus / TOB* dan *Turnstile Gate*), perangkat pembaca kartu uang elektronik (kartu prabayar bank/operator) dan ponsel *QRIS Tap NFC* menghadapi kondisi lapangan ekstrem: guncangan armada, fluktuasi sinyal seluler, pemrosesan *store-and-forward offline*, serta percobaan kecurangan (*fraud*). **TransitSentinel** dirancang untuk mendeteksi dan melakukan auto-remediasi secara waktu nyata terhadap 5 patologi anomali:
 
 1. **`DOUBLE_TAP_GLITCH` (Tagihan Ganda Akibat Gangguan Jaringan/Reader)**: Penumpang menempelkan kembali kartu/QRIS Tap dalam selang $\Delta t_{\text{card}} \le 8\text{ detik}$ pada perangkat TOB dan halte yang sama akibat keterlambatan bunyi *beep* ($\to$ tindakan otomatis: `AUTO_REFUND_DUPLICATE`).
 2. **`IMPOSSIBLE_TRAVEL_CLONE` (Kecepatan Perjalanan Mustahil & Kloning Kartu)**: Hash kartu (`card_pan_hash`) yang sama tercatat melakukan transaksi di dua lokasi berjarak $> 2,5\text{ km}$ dalam selisih waktu detik dengan kecepatan geodesik implisit $v_{\text{kmh}} > 120\text{ km/jam}$ ($\to$ tindakan otomatis: `TEMP_FREEZE_TOKEN_AND_ALERT`).
@@ -25,7 +25,7 @@ flowchart LR
     B --> C1["Tier 1: Deterministic\nGuardrail (< 0.1 ms)"]
     B --> C2["Tier 2: PyTorch Residual\nVAE (torch.inference_mode)"]
     B --> C3["Tier 3: Isolation Forest +\nCalibrated LightGBM + SHAP"]
-    C1 & C2 & C3 --> D["4. Cost-Sensitive Router\n(Optimal Threshold τ* = 0.44)"]
+    C1 & C2 & C3 --> D["4. Cost-Sensitive Router\n(Optimal Threshold τ* = 0.41)"]
     D --> E["5. Daily Settlement Audit\n(Robust MAD Z-Score |Z| > 3.5)"]
 ```
 
@@ -47,28 +47,31 @@ Evaluasi dilakukan secara kronologis ketat (**Zero Temporal Leakage**: Hari 1–
 | **2. Isolation Forest (Unsupervised)** | 0.9559 | 0.9403 | 0.9495 | 0.03167 | Rp 13.292.500 | 93.2% |
 | **3. PyTorch Deep Autoencoder (DAE)** | 0.9692 | 0.9537 | 0.9716 | 0.06377 | Rp 13.466.000 | 94.4% |
 | **4. PyTorch Variational Autoencoder (VAE)** | 0.9648 | 0.9296 | 0.9621 | 0.16362 | Rp 13.135.500 | 92.1% |
-| **5. AinoSentinel Hybrid Stacking (VAE + IF + LGBM)** | **0.9868** | **0.9811** | **0.9842** | **0.00074** | **Rp 13.975.000** | **98.0%** |
+| **5. TransitSentinel Hybrid Stacking (VAE + IF + LGBM)** | **0.9868** | **0.9811** | **0.9842** | **0.00074** | **Rp 13.975.000** | **98.0%** |
 
-- **Double-Tap Auto-Refund Precision ($\tau_{\text{refund}} = 0.85$)**: **1.0000 (100.0%)** — melampaui target DoD $\ge 0.97$.
+- **Double-Tap Auto-Refund Precision ($\tau_{\text{refund}} = 0.85$)**: **1.0000 (100.0%)** — auto-refund aman dieksekusi secara otomatis.
 - **Daily Settlement Batch Discrepancy Recall (`|Z_MAD| > 3.5`)**: **1.0000 (100.0%)** — seluruh batch dengan selisih $> \text{Rp}50.000$ atau *missing packet* $> 0,5\%$ berhasil ditandai otomatis.
 - **FastAPI Real-Time Scoring Latency**: **p50 < 12 ms, p95 < 25 ms** per transaksi — memenuhi SLA produksi $< 40\text{ ms}$.
 
 ---
 
-## 4. Pembagian Peran Tim (Work Breakdown Structure — Role A, B, C)
+## 4. Rencana Kerja & Eksekusi Empat Sprint (Solo Engineering Blueprint)
 
-| Peran Tim | Kepemilikan Modul & Direktori | Tanggung Jawab Teknis Utama | Unit Test & Verifikasi (DoD) |
+Seluruh repositori ini dirancang dan dibangun secara mandiri (*solo engineering*) melalui siklus iteratif 4 sprint terstruktur:
+
+| Sprint | Modul & Direktori | Fokus Teknis & Deliverable | Kriteria Verifikasi (DoD) |
 | :--- | :--- | :--- | :--- |
-| **Role A: Data & Streaming Feature Engineer** | `data/`, `src/ingestion/`, `src/features/` | Simulator 120.000 transaksi multi-koridor (45 halte, 120 TOB), pembagian kronologis bebas *leakage*, vektorisasi Haversine NumPy & 28 fitur *sliding-window* kausal. | `tests/test_no_temporal_leakage.py` & `tests/test_velocity_and_doubletap.py` (**DoD-1 PASSED**) |
-| **Role B: ML & Deep Learning Engineer** | `src/models/`, `src/reconciliation/cost_optimizer.py` | Pelatihan *PyTorch Residual VAE* murni pada data normal, *Isolation Forest + LightGBM Stacking*, atribusi fitur lokal *TreeSHAP*, dan optimasi ambang biaya $\tau^*$. | `tests/test_vae_and_ensemble.py` (**DoD-2 PASSED**) |
-| **Role C: Backend API, Settlement & Ops UI Engineer** | `src/reconciliation/settlement_auditor.py`, `src/api/`, `app_streamlit.py`, `src/visualization/` | Auditor settlement harian berbasis *Robust MAD Z-Score*, server *FastAPI* (`lifespan` loader), dashboard 4-tab *Streamlit*, dan generator animasi *end-to-end*. | `tests/test_api_and_settlement.py` (**DoD-3 & DoD-4 PASSED**) |
+| **Sprint 1: Simulator & Spatio-Temporal Velocity Engine** | `data/`, `src/ingestion/`, `src/features/` | Membangun simulator transaksi realistis (45 halte, 120 TOB, 15.000 kartu, 120.000 transaksi), pembagian data kronologis tanpa leakage, serta vektorisasi Haversine dan ekstraksi 28 fitur sliding-window. | `tests/test_no_temporal_leakage.py` & `tests/test_velocity_and_doubletap.py` (**DoD-1 PASSED**) |
+| **Sprint 2: Hybrid 3-Tier Engine & Cost Optimizer** | `src/models/`, `src/reconciliation/cost_optimizer.py` | Melatih PyTorch Residual VAE murni pada data normal latih, membangun Isolation Forest + LightGBM Stacking, menghitung nilai atribusi TreeSHAP, dan mencari threshold optimal $\tau^*$ berbasis fungsi biaya Rupiah. | `tests/test_vae_and_ensemble.py` (**DoD-2 PASSED**) |
+| **Sprint 3: Production API & Settlement Auditor** | `src/reconciliation/settlement_auditor.py`, `src/api/` | Mengembangkan auditor rekonsiliasi harian berbasis Robust MAD Z-Score, membungkus pipeline inferensi ke dalam REST API FastAPI berkecepatan tinggi dengan kontrak Pydantic v2 dan lifespan loader. | `tests/test_api_and_settlement.py` (**DoD-3 PASSED**) |
+| **Sprint 4: Operations Center UI, Animasi & Evaluasi** | `app_streamlit.py`, `src/visualization/` | Mengembangkan dashboard 4-tab interaktif di Streamlit, membuat generator animasi visual pipeline, dan memvalidasi keseluruhan sistem bebas warning/exception. | `tests/test_api_and_settlement.py` & `AppTest` (**DoD-4 PASSED**) |
 
 ---
 
 ## 5. Tata Letak Direktori & Cara Menjalankan Proyek
 
 ```text
-ainosentinel-cashless-anomaly/
+transit-cashless-anomaly-detection/
 ├── README.md
 ├── requirements.txt
 ├── pytest.ini

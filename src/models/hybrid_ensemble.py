@@ -104,6 +104,9 @@ class HybridStackingEnsemble:
 
     def _compute_if_anomaly_score(self, x_scaled: np.ndarray) -> np.ndarray:
         """Menghitung skor anomali Isolation Forest (semakin tinggi semakin anomali)."""
+        if len(x_scaled) == 1:
+            return np.array([self._fast_score_single_if(x_scaled[0])], dtype=np.float64)
+
         prev_jobs = self.isolation_forest.n_jobs
         if len(x_scaled) <= 32:
             self.isolation_forest.n_jobs = 1
@@ -112,6 +115,55 @@ class HybridStackingEnsemble:
         finally:
             self.isolation_forest.n_jobs = prev_jobs
         return raw_if.astype(np.float64)
+
+    def _fast_score_single_if(self, x_row: np.ndarray) -> float:
+        """Evaluasi pohon Isolation Forest secara langsung tanpa overhead validasi sklearn (< 3 ms)."""
+        if not hasattr(self, "_if_cached_trees"):
+            from sklearn.ensemble._iforest import _average_path_length
+
+            estimators = self.isolation_forest.estimators_
+            feat_list = self.isolation_forest.estimators_features_
+            max_samples = self.isolation_forest._max_samples
+            avg_max = float(_average_path_length(np.array([max_samples]))[0])
+
+            t_left = [t.tree_.children_left for t in estimators]
+            t_right = [t.tree_.children_right for t in estimators]
+            t_feat = [feat_list[i][t.tree_.feature] for i, t in enumerate(estimators)]
+            t_thresh = [t.tree_.threshold for t in estimators]
+            t_samples = [t.tree_.n_node_samples for t in estimators]
+
+            apl_lookup = np.zeros(2049, dtype=np.float64)
+            for n in range(2, 2049):
+                apl_lookup[n] = 2.0 * (np.log(n - 1) + 0.5772156649) - (2.0 * (n - 1) / n)
+
+            self._if_cached_trees = (t_left, t_right, t_feat, t_thresh, t_samples, apl_lookup, avg_max)
+
+        t_left, t_right, t_feat, t_thresh, t_samples, apl_lookup, avg_max = self._if_cached_trees
+        paths = 0.0
+        n_trees = len(t_left)
+
+        for i in range(n_trees):
+            l = t_left[i]
+            r = t_right[i]
+            f = t_feat[i]
+            th = t_thresh[i]
+            s = t_samples[i]
+
+            node = 0
+            depth = 0
+            while l[node] != -1:
+                if x_row[f[node]] <= th[node]:
+                    node = l[node]
+                else:
+                    node = r[node]
+                depth += 1
+            n_samp = s[node]
+            if n_samp > 1:
+                paths += depth + apl_lookup[min(n_samp, 2048)]
+            else:
+                paths += depth
+
+        return float(2.0 ** (-(paths / n_trees) / avg_max))
 
     def predict_if_proba_unsupervised(self, x_scaled: np.ndarray) -> np.ndarray:
         """Mengonversi skor Isolation Forest menjadi pseudo-probabilitas [0, 1] untuk benchmark."""

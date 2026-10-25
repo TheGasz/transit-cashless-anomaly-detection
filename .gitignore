@@ -18,5 +18,9 @@ htmlcov/
 Thumbs.db
 desktop.ini
 
+# PRD and Internal Specification documents
+*.pdf
+PRD*
+
 # Duplicate parquet in data root (original is in data/raw/)
 data/transactions_stream.parquet
